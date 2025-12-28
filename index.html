@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Buffy vs Redacted: Full Audio</title>
+    <title>Buffy vs Redacted: Adjusted Speed</title>
     <style>
         * { box-sizing: border-box; }
         html, body {
@@ -137,18 +137,16 @@
         const imgCoin = new Image();    imgCoin.src = 'coin.png';
         const imgPower = new Image();   imgPower.src = 'power.png';
 
-        // --- KHỞI TẠO ÂM THANH ---
         const sndEat = new Audio('eat.mp3');
         const sndWin = new Audio('win.mp3');
         const sndDie = new Audio('die.mp3');
         const sndBGM = new Audio('bgm.mp3');
-        sndBGM.loop = true; // Nhạc nền lặp lại vô tận
-        sndBGM.volume = 0.5; // Giảm âm lượng nhạc nền xuống 50%
+        sndBGM.loop = true; 
+        sndBGM.volume = 0.5; 
 
-        // Hàm giúp phát lại âm thanh ngắn liên tục (tiếng ăn tiền)
         function playSound(sound) {
-            sound.currentTime = 0; // Tua lại đầu
-            sound.play().catch(() => {}); // catch lỗi nếu trình duyệt chặn
+            sound.currentTime = 0; 
+            sound.play().catch(() => {}); 
         }
 
         let tileSize, score = 0, currentLevel = 0, gameRunning = true, isPaused = false;
@@ -187,17 +185,20 @@
             currentLevel = idx;
             map = JSON.parse(JSON.stringify(allLevels[idx]));
             rows = map.length; cols = map[0].length;
-            baseSpeed = Math.max(160 - (idx * 10), 70);
+            
+            // --- THAY ĐỔI TỐC ĐỘ (CHẬM LẠI) ---
+            // Tăng giá trị cơ bản để làm chậm (250ms -> 120ms)
+            baseSpeed = Math.max(250 - (idx * 10), 120);
             
             resizeGame();
 
             pacman = { x: 1, y: 1, dirX: 0, dirY: 0, nextX: 0, nextY: 0 };
             ghosts = [];
 
-            let ghostCount = 2; // Lv 1-2
-            if (idx >= 2) ghostCount = 3; // Lv 3-5
-            if (idx >= 5) ghostCount = 4; // Lv 6-8
-            if (idx >= 8) ghostCount = 5; // Lv 9-10
+            let ghostCount = 2; 
+            if (idx >= 2) ghostCount = 3; 
+            if (idx >= 5) ghostCount = 4; 
+            if (idx >= 8) ghostCount = 5; 
 
             let ghostStarts = [];
             for(let r=0; r<rows; r++) {
@@ -220,7 +221,6 @@
             overlay.style.display = "none"; powerContainer.style.visibility = "hidden";
             statusTitle.style.color = "#00ff00";
 
-            // Bắt đầu nhạc nền (nếu chưa chạy)
             sndBGM.play().catch(() => {});
         }
 
@@ -232,7 +232,6 @@
             overlay.style.display = isPaused ? "flex" : "none";
             document.getElementById("next-btn").innerText = "RESUME";
             
-            // Tạm dừng nhạc
             if(isPaused) sndBGM.pause();
             else sndBGM.play();
         }
@@ -249,8 +248,14 @@
 
             let tile = map[pacman.y][pacman.x];
             if (tile === 0 || tile === 3) {
-                playSound(sndEat); // Âm thanh ăn tiền
-                if (tile === 3) { powerMode = true; powerTimeLeft = 50; powerContainer.style.visibility = "visible"; }
+                playSound(sndEat); 
+                if (tile === 3) { 
+                    powerMode = true; 
+                    // --- THAY ĐỔI THỜI GIAN POWER ---
+                    // Giảm còn 25 bước
+                    powerTimeLeft = 25; 
+                    powerContainer.style.visibility = "visible"; 
+                }
                 map[pacman.y][pacman.x] = 2; 
                 score += (tile === 3 ? 50 : 10);
                 scoreText.innerText = score;
@@ -260,7 +265,9 @@
 
             if (powerMode) {
                 powerTimeLeft--;
-                powerBar.style.width = (powerTimeLeft * 2) + "%";
+                // Tính toán lại thanh hiển thị dựa trên tổng thời gian mới là 25
+                // (powerTimeLeft / 25) * 100% = powerTimeLeft * 4
+                powerBar.style.width = (powerTimeLeft * 4) + "%";
                 if (powerTimeLeft <= 0) { powerMode = false; powerContainer.style.visibility = "hidden"; }
             }
 
@@ -277,11 +284,11 @@
                         let start = {x: cols-2, y: rows-2};
                         for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { if(allLevels[currentLevel][r][c] === 2) start = {x:c, y:r}; break;}}
                         g.x = start.x; g.y = start.y;
-                        playSound(sndEat); // Ăn gấu dùng chung tiếng ăn
+                        playSound(sndEat); 
                     }
                     else { 
                         gameRunning = false; 
-                        playSound(sndDie); sndBGM.pause(); // Âm thanh thua
+                        playSound(sndDie); sndBGM.pause(); 
                         statusTitle.innerText = "GAME OVER"; statusTitle.style.color = "#ff0000"; 
                         popupScore.innerText = score; 
                         overlay.style.display = "flex"; 
@@ -329,7 +336,7 @@
 
         function levelWin() {
             gameRunning = false;
-            playSound(sndWin); // Âm thanh thắng
+            playSound(sndWin); 
             statusTitle.innerText = `LEVEL ${currentLevel+1} COMPLETED!`;
             statusTitle.style.color = "#00ff00";
             popupScore.innerText = score; 
@@ -359,7 +366,6 @@
             if (e.key === " ") togglePause();
             if (e.key.includes("Arrow")) {
                 e.preventDefault();
-                // Một mẹo nhỏ: Nếu nhạc chưa chạy (do trình duyệt chặn), nhấn phím sẽ kích hoạt nhạc
                 if (sndBGM.paused && gameRunning && !isPaused) sndBGM.play().catch(()=>{});
             }
         });
