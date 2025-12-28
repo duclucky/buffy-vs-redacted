@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Buffy vs Redacted: Screenshot Friendly</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+        }
+
+        body {
+            /* Background Game */
+            background-image: url('background.png'); 
+            background-color: #02020a;
+            background-position: center; background-repeat: no-repeat; background-size: cover;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            color: white;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            padding-top: 10px;
+        }
+
+        #ui-board {
+            display: flex; flex-direction: column; align-items: center;
+            width: 95%; max-width: 800px; margin-bottom: 5px;
+            text-shadow: 2px 2px 4px #000; z-index: 5;
+        }
+        #info-row { display: flex; justify-content: space-between; width: 100%; font-size: 20px; font-weight: bold; color: #00ff00; }
+        
+        #power-container {
+            width: 100%; height: 8px; background: #333; 
+            border: 1px solid #555; border-radius: 4px; margin-top: 5px; visibility: hidden;
+        }
+        #power-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #0f0, #f00); transition: width 0.1s; }
+
+        #game-container { 
+            position: relative; border: 4px solid #444; 
+            box-shadow: 0 0 30px rgba(0,255,0,0.3);
+            background: rgba(0, 0, 0, 0.7);
+            line-height: 0; z-index: 5;
+        }
+        canvas { display: block; }
+
+        /* OVERLAY CONTAINER */
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); 
+            display: none; 
+            flex-direction: column; /* Xếp dọc: Card ở trên, Nút ở dưới */
+            justify-content: center; align-items: center; 
+            z-index: 20;
+        }
+
+        /* --- SCORE CARD (Dành cho việc chụp ảnh) --- */
+        #popup-card {
+            width: 85%; max-width: 450px;
+            height: 250px; 
+            background-image: url('popup-bg.png'); 
+            background-size: 100% 100%; 
+            background-repeat: no-repeat;
+            background-position: center;
+            
+            display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            
+            /* Tạo khoảng cách với nút bấm bên dưới */
+            margin-bottom: 25px; 
+            
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 2px solid #ffd700;
+            text-align: center;
+        }
+
+        #status-title {
+            font-size: 36px; margin: 0 0 15px 0;
+            text-shadow: 3px 3px 0 #000;
+            letter-spacing: 2px;
+        }
+
+        #final-score-box {
+            font-size: 28px; font-weight: bold; color: #fff;
+            text-shadow: 2px 2px 4px #000;
+            background: rgba(0,0,0,0.3); /* Nền mờ nhẹ cho điểm số dễ đọc */
+            padding: 5px 20px;
+            border-radius: 10px;
+        }
+        
+        /* --- NÚT BẤM (Nằm ngoài Card) --- */
+        .btn { 
+            padding: 15px 40px; font-size: 20px; cursor: pointer; 
+            background: #00ff00; border: 2px solid #fff; 
+            color: #000; font-weight: 900; border-radius: 50px; 
+            box-shadow: 0 0 15px #00ff00;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn:active { transform: scale(0.95); box-shadow: 0 0 5px #00ff00; }
+
+        #rules-board {
+            margin-top: 10px; background: rgba(0,0,0,0.7);
+            padding: 10px; border-radius: 12px; border: 1px solid #00ff00;
+            width: 95%; max-width: 800px; backdrop-filter: blur(5px);
+            z-index: 5; max-height: 25vh; overflow-y: auto;
+        }
+        .rule-row { display: flex; flex-wrap: wrap; justify-content: space-around; gap: 10px; }
+        .rule-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #eee; width: 45%; }
+        .icon-box { width: 28px; height: 28px; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        .icon-box img { width: 100%; height: 100%; object-fit: contain; }
+
+        @media (max-width: 600px) { .rule-item { width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div id="ui-board">
+        <div id="info-row">
+            <div>LEVEL: <span id="lvl-text">1</span></div>
+            <div>SCORE: <span id="score-text">0</span></div>
+            <button onclick="togglePause()" style="background:#555; color:#fff; border:1px solid #fff; padding:5px 15px; cursor:pointer; font-weight:bold; border-radius:4px;">PAUSE</button>
+        </div>
+        <div id="power-container"><div id="power-bar"></div></div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="overlay-msg" class="overlay">
+            
+            <div id="popup-card">
+                <h2 id="status-title">GAME OVER</h2>
+                <div id="final-score-box">SCORE: <span id="popup-score">0</span></div>
+            </div>
+
+            <button id="next-btn" class="btn" onclick="nextLevel()">TRY AGAIN</button>
+
+        </div>
+    </div>
+
+    <div id="rules-board">
+        <div class="rule-row">
+            <div class="rule-item"><div class="icon-box"><img src="icon-octopus.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐙</text></svg>'"></div><span>Arrow keys to move <b>Buffy</b>.</span></div>
+            <div class="rule-item"><div class="icon-box"><img src="icon-bear.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐻</text></svg>'"></div><span>Avoid <b>Redacted</b>.</span></div>
+            <div class="rule-item"><div class="icon-box"><img src="icon-power.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💊</text></svg>'"></div><span>Get Power to hunt <b>Redacted</b>.</span></div>
+            <div class="rule-item"><div class="icon-box"><img src="icon-ghost.png" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👻</text></svg>'"></div><span>Faded <b>Redacted</b> = Eatable.</span></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreText = document.getElementById("score-text"), lvlText = document.getElementById("lvl-text");
+        const powerBar = document.getElementById("power-bar"), powerContainer = document.getElementById("power-container");
+        const overlay = document.getElementById("overlay-msg");
+        const statusTitle = document.getElementById("status-title");
+        const popupScore = document.getElementById("popup-score"); 
+
+        const imgOctopus = new Image(); imgOctopus.src = 'octopus.png';
+        const imgBear = new Image();    imgBear.src = 'bear.png';
+        const imgCoin = new Image();    imgCoin.src = 'coin.png';
+        const imgPower = new Image();   imgPower.src = 'power.png';
+
+        let tileSize, score = 0, currentLevel = 0, gameRunning = true, isPaused = false;
+        let powerMode = false, powerTimeLeft = 0, totalCoins = 0, baseSpeed = 150;
+        let map = [], rows = 0, cols = 0;
+
+        /* --- 10 HARDCODED LEVELS --- */
+        const allLevels = [
+            // LEVEL 1
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,0,1,0,0,0,0,3,1],[1,0,1,1,1,0,1,0,1,1,1,0,1],[1,0,1,0,0,0,0,0,0,0,1,0,1],[1,0,0,0,1,1,0,1,1,0,0,0,1],[1,0,1,0,0,0,2,0,0,0,1,0,1],[1,0,1,1,1,0,1,0,1,1,1,0,1],[1,3,0,0,0,0,1,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 2
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,0,1,0,0,0,0,0,0,3,1],[1,0,1,1,1,0,1,0,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,0,1,1,1,1,1,0,1,1,0,1],[1,0,0,1,0,0,0,2,0,0,0,1,0,0,1],[1,1,0,1,1,1,0,1,0,1,1,1,0,1,1],[1,3,0,0,0,0,0,1,0,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 3
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,1,0,0,0,0,0,0,0,1,0,0,3,1],[1,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,1],[1,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,1],[1,0,0,0,0,0,1,0,1,0,1,0,0,0,0,0,1],[1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1],[1,3,0,0,0,0,1,1,1,1,1,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 4
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,0,1,0,0,1,0,0,1,0,0,0,0,3,1],[1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,1,0,1],[1,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,1],[1,1,1,0,1,1,0,1,1,2,1,1,0,1,1,0,1,1,1],[1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,1],[1,0,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 5
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,1,0,0,0,1,3,1,0,0,0,1,0,0,3,1],[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0,1],[1,0,1,0,0,0,1,0,0,2,0,0,1,0,0,0,1,0,1],[1,1,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,1,1],[1,0,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1],[1,0,1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,0,1],[1,3,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 6
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,3,1],[1,0,1,1,0,1,1,0,1,0,1,1,1,0,1,0,1,1,0,0,1],[1,0,1,0,0,0,1,0,0,0,0,0,0,0,1,0,0,1,0,0,1],[1,0,1,0,1,0,1,1,1,2,1,1,1,0,1,0,1,1,0,0,1],[1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,0,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 7
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,3,1],[1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,0,1,1,0,1],[1,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,1,1,1,0,1,0,1,1,2,1,1,0,1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,0,1,0,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 8
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,3,1],[1,0,1,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,0,1],[1,0,1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1,0,1],[1,0,1,0,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1],[1,0,1,0,1,3,0,0,0,0,0,2,0,0,0,0,0,3,1,0,1,0,1],[1,0,1,0,1,1,1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,0,1],[1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1],[1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 9
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,3,1],[1,0,1,1,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,0,1,1,1,0,1,1,2,1,1,0,1,1,1,0,1,1,1,0,1,1],[1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1],[1,0,1,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,1,1,0,1],[1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]],
+            // LEVEL 10
+            [[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,0,0,0,0,0,0,1,0,0,0,0,2,0,0,0,0,1,0,0,0,0,0,0,3,1],[1,0,1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,1,1,0,1],[1,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,1,0,1],[1,0,1,0,1,0,1,0,1,1,1,1,0,1,0,1,1,1,1,0,1,0,1,0,1,0,1],[1,0,0,0,1,0,0,0,1,3,0,0,0,1,0,0,0,3,1,0,0,0,1,0,0,0,1],[1,1,1,0,1,1,1,0,1,0,1,1,1,1,1,1,1,0,1,0,1,1,1,0,1,1,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,0,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]]
+        ];
+
+        let pacman = { x: 1, y: 1 }, ghosts = [];
+
+        function resizeGame() {
+            if (!map || map.length === 0) return;
+            const availableW = window.innerWidth - 20; 
+            const availableH = window.innerHeight - 250; 
+            const tileW = availableW / cols;
+            const tileH = availableH / rows;
+            tileSize = Math.floor(Math.min(tileW, tileH));
+            canvas.width = cols * tileSize; canvas.height = rows * tileSize;
+            draw();
+        }
+
+        window.addEventListener('resize', resizeGame);
+
+        function loadLevel(idx) {
+            currentLevel = idx;
+            map = JSON.parse(JSON.stringify(allLevels[idx]));
+            rows = map.length; cols = map[0].length;
+            baseSpeed = Math.max(160 - (idx * 10), 70);
+            
+            resizeGame();
+
+            pacman = { x: 1, y: 1, dirX: 0, dirY: 0, nextX: 0, nextY: 0 };
+            ghosts = [];
+
+            let ghostCount = 2; // Lv 1-2
+            if (idx >= 2) ghostCount = 3; // Lv 3-5
+            if (idx >= 5) ghostCount = 4; // Lv 6-8
+            if (idx >= 8) ghostCount = 5; // Lv 9-10
+
+            let ghostStarts = [];
+            for(let r=0; r<rows; r++) {
+                for(let c=0; c<cols; c++) {
+                    if(map[r][c] === 2) ghostStarts.push({x: c, y: r});
+                }
+            }
+            if(ghostStarts.length === 0) ghostStarts.push({x: cols-2, y: rows-2});
+            
+            for(let i=0; i<ghostCount; i++) {
+                let start = ghostStarts[i % ghostStarts.length];
+                ghosts.push({ x: start.x, y: start.y, dirX: 0, dirY: 0 });
+            }
+
+            totalCoins = 0;
+            map.forEach(row => row.forEach(tile => { if(tile===0 || tile===3) totalCoins++; }));
+            
+            lvlText.innerText = idx + 1;
+            gameRunning = true; powerMode = false; isPaused = false;
+            overlay.style.display = "none"; powerContainer.style.visibility = "hidden";
+            statusTitle.style.color = "#00ff00";
+        }
+
+        function togglePause() { 
+            if(!gameRunning) return;
+            isPaused = !isPaused; 
+            statusTitle.innerText = "PAUSED"; statusTitle.style.color = "#FFD700";
+            popupScore.innerText = score; 
+            overlay.style.display = isPaused ? "flex" : "none";
+            document.getElementById("next-btn").innerText = "RESUME";
+        }
+
+        function update() {
+            if (!gameRunning || isPaused) return;
+
+            if (map[pacman.y + pacman.nextY][pacman.x + pacman.nextX] !== 1) {
+                pacman.dirX = pacman.nextX; pacman.dirY = pacman.nextY;
+            }
+            if (map[pacman.y + pacman.dirY][pacman.x + pacman.dirX] !== 1) {
+                pacman.x += pacman.dirX; pacman.y += pacman.dirY;
+            }
+
+            let tile = map[pacman.y][pacman.x];
+            if (tile === 0 || tile === 3) {
+                if (tile === 3) { powerMode = true; powerTimeLeft = 50; powerContainer.style.visibility = "visible"; }
+                map[pacman.y][pacman.x] = 2; 
+                score += (tile === 3 ? 50 : 10);
+                scoreText.innerText = score;
+                totalCoins--;
+                if (totalCoins <= 0) levelWin();
+            }
+
+            if (powerMode) {
+                powerTimeLeft--;
+                powerBar.style.width = (powerTimeLeft * 2) + "%";
+                if (powerTimeLeft <= 0) { powerMode = false; powerContainer.style.visibility = "hidden"; }
+            }
+
+            ghosts.forEach(g => {
+                const ds = [{x:1,y:0},{x:-1,y:0},{x:0,y:1},{x:0,y:-1}];
+                if (map[g.y + g.dirY][g.x + g.dirX] === 1 || Math.random() < 0.2) {
+                    let v = ds.filter(d => map[g.y + d.y][g.x + d.x] !== 1);
+                    if (v.length > 0) { let c = v[Math.floor(Math.random()*v.length)]; g.dirX = c.x; g.dirY = c.y; }
+                }
+                g.x += g.dirX; g.y += g.dirY;
+                if (g.x === pacman.x && g.y === pacman.y) {
+                    if (powerMode) { 
+                        score += 100; scoreText.innerText = score;
+                        let start = {x: cols-2, y: rows-2};
+                        for(let r=0; r<rows; r++) { for(let c=0; c<cols; c++) { if(allLevels[currentLevel][r][c] === 2) start = {x:c, y:r}; break;}}
+                        g.x = start.x; g.y = start.y;
+                    }
+                    else { 
+                        gameRunning = false; 
+                        statusTitle.innerText = "GAME OVER"; statusTitle.style.color = "#ff0000"; 
+                        popupScore.innerText = score; 
+                        overlay.style.display = "flex"; 
+                        document.getElementById("next-btn").innerText = "TRY AGAIN"; 
+                    }
+                }
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            map.forEach((row, r) => row.forEach((tile, c) => {
+                let x = c*tileSize, y = r*tileSize;
+                if (tile === 1) {
+                    ctx.fillStyle = "#111"; ctx.fillRect(x,y,tileSize,tileSize);
+                    ctx.strokeStyle = "#00ff0033"; ctx.lineWidth = 1; ctx.strokeRect(x,y,tileSize,tileSize);
+                } else if (tile === 0 && imgCoin.complete) {
+                    ctx.drawImage(imgCoin, x+tileSize*0.35, y+tileSize*0.35, tileSize*0.3, tileSize*0.3);
+                } else if (tile === 3 && imgPower.complete) {
+                    ctx.drawImage(imgPower, x+tileSize*0.15, y+tileSize*0.15, tileSize*0.7, tileSize*0.7);
+                }
+            }));
+            
+            ctx.save();
+            ctx.translate(pacman.x*tileSize+tileSize/2, pacman.y*tileSize+tileSize/2);
+            if (pacman.dirX === -1) ctx.scale(-1,1);
+            else if (pacman.dirY === -1) ctx.rotate(-Math.PI/2);
+            else if (pacman.dirY === 1) ctx.rotate(Math.PI/2);
+            if (imgOctopus.complete) ctx.drawImage(imgOctopus, -tileSize*0.4, -tileSize*0.4, tileSize*0.8, tileSize*0.8);
+            ctx.restore();
+
+            ghosts.forEach(g => {
+                ctx.save();
+                ctx.translate(g.x*tileSize+tileSize/2, g.y*tileSize+tileSize/2);
+                
+                if (g.dirX === -1) ctx.scale(-1, 1);
+                else if (g.dirY === -1) ctx.rotate(-Math.PI / 2);
+                else if (g.dirY === 1) ctx.rotate(Math.PI / 2);
+
+                ctx.globalAlpha = powerMode ? 0.35 : 1.0; 
+                if (imgBear.complete) ctx.drawImage(imgBear, -tileSize*0.4, -tileSize*0.4, tileSize*0.8, tileSize*0.8);
+                ctx.restore();
+            });
+        }
+
+        function levelWin() {
+            gameRunning = false;
+            statusTitle.innerText = `LEVEL ${currentLevel+1} COMPLETED!`;
+            statusTitle.style.color = "#00ff00";
+            popupScore.innerText = score; 
+            overlay.style.display = "flex";
+            document.getElementById("next-btn").innerText = "NEXT LEVEL";
+        }
+
+        function nextLevel() { 
+            if(isPaused) { togglePause(); return; }
+            if (!gameRunning && statusTitle.innerText === "GAME OVER") {
+                loadLevel(currentLevel); 
+            } else if (currentLevel + 1 < allLevels.length) {
+                loadLevel(currentLevel + 1); 
+            } else {
+                statusTitle.innerText = "VICTORY!";
+                popupScore.innerText = score;
+                document.getElementById("next-btn").innerText = "PLAY AGAIN";
+                currentLevel = -1;
+            }
+        }
+
+        window.addEventListener("keydown", e => {
+            if (e.key === "ArrowLeft") pacman.nextX = -1, pacman.nextY = 0;
+            if (e.key === "ArrowRight") pacman.nextX = 1, pacman.nextY = 0;
+            if (e.key === "ArrowUp") pacman.nextX = 0, pacman.nextY = -1;
+            if (e.key === "ArrowDown") pacman.nextX = 0, pacman.nextY = 1;
+            if (e.key === " ") togglePause();
+            if (e.key.includes("Arrow")) e.preventDefault();
+        });
+
+        function loop() { update(); draw(); setTimeout(() => requestAnimationFrame(loop), baseSpeed); }
+        loadLevel(0);
+        loop();
+    </script>
+</body>
+</html>
